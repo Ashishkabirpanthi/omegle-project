@@ -207,6 +207,11 @@
             let incall = false
 
             
+            const rtcSettings = {
+                iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+            };
+
+            
             const initilize = async () => {
                 try {
                 localStream = await navigator.mediaDevices.getUserMedia({
@@ -222,7 +227,49 @@
                 }
             }
                 initilize();
+
+            const initiateOffer = async() => {
+                await createPeerConnection()
+            }
+
+            const createpeerConnection = () => {
+                peerConnection = RTCPeerConnection(rtcSettings);
+
+                remoteStream = new MediaStream();
+
+                document.querySelector('#remoteVideo').srcObject = remoteStream;
+                document.querySelector('#remoteVideo').style.display = 'block';
+                document.querySelector('#localVideo').classList.add('smallFrame');
+
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                peerConnection.ontrack = (event) => {
+                    event.Streams[0].getTracks().forEach(track => {
+                        remoteStream.addTrack(track);
+                    });
+                }
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('sending icecandidate');
+                        socket.emit('signalingMessage', {
+                            room: room,
+                            message: JSON.stringify({
+                                type: 'candidate',
+                                candidate: event.candidate
+                            })
+                        });
+                    }
+                }
+
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('connection state changed', peerConnection.connectionState);
+                }
+
+            }
         </script>
 </body>
 
-</html
+</html>
